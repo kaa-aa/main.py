@@ -49,7 +49,6 @@ for tx in transactions:
     for item in tx:
         item_counts[item] += 1
     for pair in combinations(tx, 2):
-        # pair 저장 시 메뉴명을 정렬하여 무방향 짝으로 저장
         sorted_pair = tuple(sorted(pair))
         pair_counts[sorted_pair] += 1
 
@@ -88,4 +87,45 @@ def generate_rules(_transactions, _item_counts, _pair_counts, total_days):
                 "동시": co_occurrence,
                 "지지도": support,
                 "신뢰도": conf_b_a,
-                "향상
+                "향상도": lift_b_a,
+                "규칙명": f"{item_b} ➔ {item_a}",
+            }
+        )
+
+    return pd.DataFrame(rules)
+
+
+rules_df = generate_rules(transactions, item_counts, pair_counts, total_days)
+
+# 4. 사이드바 컨트롤 (메뉴 선택, 정렬, 최소 동시 일수 슬라이더)
+st.sidebar.header("🔍 검색 및 필터 설정")
+
+selected_menu = st.sidebar.selectbox(
+    "메뉴 선택 (전체 보기는 '전체')", ["전체"] + all_menus
+)
+
+min_co_occurrence = st.sidebar.slider(
+    "최소 동시 일수", min_value=1, max_value=10, value=1, step=1
+)
+
+sort_option = st.sidebar.radio(
+    "정렬 기준 선택", options=["향상도 순", "신뢰도 순", "동시 순"]
+)
+
+sort_column_map = {
+    "향상도 순": "향상도",
+    "신뢰도 순": "신뢰도",
+    "동시 순": "동시",
+}
+sort_column = sort_column_map[sort_option]
+
+# 데이터 필터링 (최소 동시 일수 & 메뉴 좁혀보기)
+filtered_df = rules_df[rules_df["동시"] >= min_co_occurrence].copy()
+
+if selected_menu != "전체":
+    filtered_df = filtered_df[
+        (filtered_df["조건"] == selected_menu)
+        | (filtered_df["결과"] == selected_menu)
+    ]
+
+filtered_df = filtered_df.sort_values(
