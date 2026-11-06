@@ -49,7 +49,9 @@ for tx in transactions:
     for item in tx:
         item_counts[item] += 1
     for pair in combinations(tx, 2):
-        pair_counts[pair] += 1
+        # pair 저장 시 메뉴명을 정렬하여 무방향 짝으로 저장
+        sorted_pair = tuple(sorted(pair))
+        pair_counts[sorted_pair] += 1
 
 
 # 3. 연관 규칙 생성 (방향 고려: A->B, B->A)
@@ -86,88 +88,4 @@ def generate_rules(_transactions, _item_counts, _pair_counts, total_days):
                 "동시": co_occurrence,
                 "지지도": support,
                 "신뢰도": conf_b_a,
-                "향상도": lift_b_a,
-                "규칙명": f"{item_b} ➔ {item_a}",
-            }
-        )
-
-    return pd.DataFrame(rules)
-
-
-rules_df = generate_rules(transactions, item_counts, pair_counts, total_days)
-
-# 4. 사이드바 컨트롤 (메뉴 선택 & 정렬)
-st.sidebar.header("🔍 검색 및 정렬 설정")
-
-selected_menu = st.sidebar.selectbox(
-    "메뉴 선택 (전체 보기는 '전체')", ["전체"] + all_menus
-)
-
-sort_option = st.sidebar.radio(
-    "정렬 기준 선택", options=["향상도 순", "신뢰도 순", "동시 순"]
-)
-
-sort_column_map = {
-    "향상도 순": "향상도",
-    "신뢰도 순": "신뢰도",
-    "동시 순": "동시",
-}
-sort_column = sort_column_map[sort_option]
-
-# 데이터 필터링 및 정렬
-if selected_menu != "전체":
-    filtered_df = rules_df[
-        (rules_df["조건"] == selected_menu)
-        | (rules_df["결과"] == selected_menu)
-    ].copy()
-else:
-    filtered_df = rules_df.copy()
-
-filtered_df = filtered_df.sort_values(
-    by=[sort_column, "동시"], ascending=False
-).reset_index(drop=True)
-
-# 5. 요약 정보 표시 (한 줄로 출력)
-unique_pairs_count = len(pair_counts)
-menu_types_count = len(all_menus)
-
-st.markdown(
-    f"**급식 일수:** {total_days}일 | **메뉴 종류 수:** {menu_types_count}개 | **함께 나온 적이 있는 메뉴 쌍의 수:** {unique_pairs_count}개"
-)
-st.divider()
-
-# 6. Plotly 가로 막대그래프 (상위 10개)
-st.subheader("📊 향상도 상위 10개 규칙")
-
-if not filtered_df.empty:
-    # 향상도 기준으로 상위 10개 추출
-    top10_df = filtered_df.sort_values(by="향상도", ascending=False).head(10)
-    # 그래프 시각화를 위해 순서 정렬 (위에서부터 1위가 오도록)
-    top10_plot_df = top10_df.sort_values(by="향상도", ascending=True)
-
-    fig = px.bar(
-        top10_plot_df,
-        x="향상도",
-        y="규칙명",
-        orientation="h",
-        text=top10_plot_df["향상도"].apply(lambda x: f"{x:.2f}"),
-        labels={"향상도": "향상도 (Lift)", "규칙명": "연관 규칙"},
-        color="향상도",
-        color_continuous_scale="Blues",
-    )
-    fig.update_traces(textposition="outside")
-    fig.update_layout(height=450, showlegend=False)
-    st.plotly_chart(fig, use_container_width=True)
-else:
-    st.info("조건에 해당하는 규칙이 없습니다.")
-
-# 7. 표 출력
-st.subheader("📋 규칙 상세 목록")
-
-display_columns = ["조건", "결과", "동시", "지지도", "신뢰도", "향상도"]
-st.dataframe(
-    filtered_df[display_columns].style.format(
-        {"지지도": "{:.4f}", "신뢰도": "{:.4f}", "향상도": "{:.4f}"}
-    ),
-    use_container_width=True,
-)
+                "향상
